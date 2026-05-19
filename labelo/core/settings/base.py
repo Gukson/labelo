@@ -83,6 +83,7 @@ from labelo.core.utils.params import get_bool_env, get_env
 
 logger = logging.getLogger(__name__)
 SILENCED_SYSTEM_CHECKS = []
+DEFAULT_SCRIPT_NAME = '/labelo'
 
 # Hostname is used for proper path generation to the resources, pages, etc
 HOSTNAME = get_env('HOST', '')
@@ -105,6 +106,12 @@ if HOSTNAME:
             FORCE_SCRIPT_NAME = match.group(3)
             if FORCE_SCRIPT_NAME:
                 logger.info('=> Django URL prefix is set to: %s', FORCE_SCRIPT_NAME)
+
+FORCE_SCRIPT_NAME = get_env('FORCE_SCRIPT_NAME', locals().get('FORCE_SCRIPT_NAME', DEFAULT_SCRIPT_NAME)).rstrip('/')
+if FORCE_SCRIPT_NAME and not FORCE_SCRIPT_NAME.startswith('/'):
+    FORCE_SCRIPT_NAME = f'/{FORCE_SCRIPT_NAME}'
+if FORCE_SCRIPT_NAME:
+    logger.info('=> Effective Django URL prefix is set to: %s', FORCE_SCRIPT_NAME)
 
 DOMAIN_FROM_REQUEST = get_bool_env('DOMAIN_FROM_REQUEST', False)
 
@@ -392,8 +399,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 STATIC_URL = '/static/'
-# if FORCE_SCRIPT_NAME:
-#    STATIC_URL = FORCE_SCRIPT_NAME + STATIC_URL
+if FORCE_SCRIPT_NAME:
+    STATIC_URL = f'{FORCE_SCRIPT_NAME}{STATIC_URL}'
 logger.info(f'=> Static URL is set to: {STATIC_URL}')
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'static_build')
@@ -427,6 +434,8 @@ USER_ADDITIONAL_BANNED_SUBNETS = get_env_list('USER_ADDITIONAL_BANNED_SUBNETS', 
 MEDIA_ROOT = os.path.join(BASE_DATA_DIR, 'media')
 os.makedirs(MEDIA_ROOT, exist_ok=True)
 MEDIA_URL = '/data/'
+if FORCE_SCRIPT_NAME:
+    MEDIA_URL = f'{FORCE_SCRIPT_NAME}{MEDIA_URL}'
 UPLOAD_DIR = 'upload'
 COMPRESSED_DIR = 'compressed'
 AVATAR_PATH = 'avatars'
@@ -518,6 +527,13 @@ BATCH_SIZE = 1000
 PROJECT_TITLE_MIN_LEN = 3
 PROJECT_TITLE_MAX_LEN = 50
 LOGIN_REDIRECT_URL = '/'
+if FORCE_SCRIPT_NAME:
+    LOGIN_REDIRECT_URL = f'{FORCE_SCRIPT_NAME}/'
+
+SESSION_COOKIE_PATH = FORCE_SCRIPT_NAME or '/'
+CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or '/'
+USE_X_FORWARDED_HOST = get_bool_env('USE_X_FORWARDED_HOST', True)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 LOGIN_URL = '/'
 MIN_GROUND_TRUTH = 10
 DATA_UNDEFINED_NAME = '$undefined$'

@@ -6,10 +6,11 @@ from django import forms
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.forms import SetPasswordForm, PasswordResetForm
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
 
 from organizations.models import Organization
-from users.models import User
+from users.models import ALLOWED_EMAIL_ERROR, User, validate_allowed_email_domain
 
 
 EMAIL_MAX_LENGTH = 256
@@ -91,6 +92,10 @@ class UserSignupForm(forms.Form):
         email = self.cleaned_data.get('email').lower()
         if len(email) >= EMAIL_MAX_LENGTH:
             raise forms.ValidationError('Email is too long')
+        try:
+            validate_allowed_email_domain(email)
+        except DjangoValidationError:
+            raise forms.ValidationError(ALLOWED_EMAIL_ERROR)
 
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError('User with this email already exists')
@@ -149,6 +154,11 @@ class UserCreateForm(forms.Form):
         email = self.cleaned_data.get('email').lower()
         # if len(email) >= EMAIL_MAX_LENGTH:
         #     raise forms.ValidationError('Email is too long')
+
+        try:
+            validate_allowed_email_domain(email)
+        except DjangoValidationError:
+            raise forms.ValidationError(ALLOWED_EMAIL_ERROR)
 
         if email and User.objects.filter(email=email).exists():
             raise forms.ValidationError('User with this email already exists')

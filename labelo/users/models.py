@@ -6,6 +6,7 @@ from typing import Optional
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin, Group
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -24,6 +25,8 @@ from users.functions import hash_upload
 
 
 YEAR_START = 1980
+ALLOWED_EMAIL_DOMAIN = 'pwr.edu.pl'
+ALLOWED_EMAIL_ERROR = f'Only @{ALLOWED_EMAIL_DOMAIN} email addresses are allowed.'
 YEAR_CHOICES = []
 for r in range(YEAR_START, (datetime.datetime.now().year + 1)):
     YEAR_CHOICES.append((r, r))
@@ -42,6 +45,7 @@ class UserManager(BaseUserManager):
             raise ValueError('Must specify an email address')
 
         email = self.normalize_email(email)
+        validate_allowed_email_domain(email)
         user = self.model(email=email, **extra_fields)
 
         user.set_password(password)
@@ -64,6 +68,12 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(email, password, **extra_fields)
+
+
+def validate_allowed_email_domain(email):
+    normalized_email = (email or '').strip().lower()
+    if not normalized_email.endswith(f'@{ALLOWED_EMAIL_DOMAIN}'):
+        raise ValidationError(ALLOWED_EMAIL_ERROR)
 
 
 class UserLastActivityMixin(models.Model):
@@ -138,6 +148,12 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
             models.Index(fields=['last_name']),
             models.Index(fields=['date_joined']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(email__iendswith=f'@{ALLOWED_EMAIL_DOMAIN}'),
+                name='htx_user_email_allowed_domain',
+            ),
+        ]
 
     @property
     def avatar_url(self):
@@ -168,6 +184,7 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
     def clean(self):
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
+        validate_allowed_email_domain(self.email)
 
     def name_or_email(self):
         name = self.get_full_name()

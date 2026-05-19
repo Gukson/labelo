@@ -62,7 +62,7 @@ urlpatterns = [
         r'^sw-fallback\.js$',
         views.static_file_with_host_resolver('static/js/sw-fallback.js', content_type='text/javascript'),
     ),
-    re_path(r'^favicon\.ico$', RedirectView.as_view(url='/static/images/favicon.ico', permanent=True)),
+    re_path(r'^favicon\.ico$', RedirectView.as_view(url=f'{settings.STATIC_URL}images/favicon.ico', permanent=True)),
     re_path(
         r'^label-studio-frontend/(?P<path>.*)$',
         serve,
@@ -104,7 +104,7 @@ urlpatterns = [
     path('docs/api/', public_schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path(
         'docs/',
-        RedirectView.as_view(url='/static/docs/public/guide/introduction.html', permanent=False),
+        RedirectView.as_view(url=f'{settings.STATIC_URL}docs/public/guide/introduction.html', permanent=False),
         name='docs-redirect',
     ),
     path('admin/', admin.site.urls),
